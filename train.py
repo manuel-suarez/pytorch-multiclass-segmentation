@@ -62,3 +62,37 @@ def main():
     )
 
     print("Data Loaded Successfully!")
+
+    # Defining the model, optimizer and loss function
+    unet = UNET(in_channels=3, classes=19).to(DEVICE).train()
+    optimizer = optim.Adam(unet.parameters(), lr=LEARNING_RATE)
+    loss_function = nn.CrossEntropyLoss(ignore_index=255)
+
+    # Loading a previous stored model from MODEL_PATH variable
+    if LOAD_MODEL == True:
+        checkpoint = torch.load(MODEL_PATH)
+        unet.load_state_dict(checkpoint["model_state_dict"])
+        optimizer.load_state_dict(checkpoint["optim_state_dict"])
+        epoch = checkpoint["epoch"] + 1
+        LOSS_VALS = checkpoint["loss_values"]
+        print("Model successfully loaded!")
+
+    # Training the model for every epoch
+    for e in range(epoch, EPOCHS):
+        print(f"Epoch: {e}")
+        loss_val = train_function(train_set, unet, optimizer, loss_function, DEVICE)
+        LOSS_VALS.append(loss_val)
+        torch.save(
+            {
+                "model_state_dict": unet.state_dict(),
+                "optim_state_dict": optimizer.state_dict(),
+                "epoch": e,
+                "loss_values": LOSS_VALS,
+            },
+            MODEL_PATH,
+        )
+        print("Epoch completed and model successfully saved!")
+
+
+if __name__ == "__main__":
+    main()
