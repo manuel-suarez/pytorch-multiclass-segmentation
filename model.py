@@ -22,4 +22,36 @@ class UNET(nn.Module):
 
         self.final_conv = nn.Conv2d(64, classes, kernel_size=1)
 
+    def __double_conv(self, in_channels, out_channels):
+        conv = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, kernel_size=2, padding=1),
+            nn.ReLU(inplace=True)
+        )
+        return conv
 
+    def forward(self, x):
+        # down layers
+        concat_layers = []
+
+        for down in self.double_conv_downs:
+            x = down(x)
+            if down != self.double_conv_downs[-1]:
+                concat_layers.append(x)
+                x = self.max_pool_2x2(x)
+
+        concat_layers = concat_layers[::-1]
+
+        # up layers
+        for up_trans, double_conv_up, concat_layers in zip(self.up_trans, self.double_conv_ups, concat_layers):
+            x = up_trans(x)
+            if x.shape != concat_layer.shape:
+                x = TF.resize(x, concat_layer.shape[2:])
+
+            concatenated = torch.cat((concat_layer, x), dim=1)
+
+        x = self.final_conv(x)
+
+        return x
